@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Leads Finder</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #222; }
+  header { background: #1a1a1a; color: #fff; padding: 20px 32px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 20px; font-weight: 700; }
+  header span { background: #00c853; color: #000; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
+  .container { max-width: 1100px; margin: 32px auto; padding: 0 24px; }
+  .search-box { background: #fff; border-radius: 12px; padding: 28px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); margin-bottom: 24px; }
+  .fields { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+  label { display: block; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  input { width: 100%; padding: 12px 16px; border: 1.5px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; }
+  input:focus { border-color: #00c853; }
+  button { padding: 12px 28px; background: #1a1a1a; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button:disabled { background: #999; cursor: not-allowed; }
+  .btn-export { background: #00c853; color: #000; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  #status { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  th { background: #1a1a1a; color: #fff; padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+  .rating { color: #f59e0b; font-weight: 700; }
+  a { color: #1a1a1a; font-weight: 600; }
+  .hidden { display: none; }
+  @media (max-width: 640px) { .fields { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Leads Finder</h1>
+  <span>Google Maps</span>
+</header>
+
+<div class="container">
+  <div class="search-box">
+    <h2 style="font-size:16px;font-weight:600;margin-bottom:20px;color:#444">Buscar negócios no Google Maps</h2>
+    <div class="fields">
+      <div>
+        <label>Nicho / Tipo de negócio</label>
+        <input id="nicho" type="text" placeholder="Ex: clínica de estética, dentista..."/>
+      </div>
+      <div>
+        <label>Cidade</label>
+        <input id="cidade" type="text" placeholder="Ex: São Paulo, SP"/>
+      </div>
+      <div>
+        <button id="btn-buscar" onclick="buscar()">Buscar Leads</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="results-area" class="hidden">
+    <div class="toolbar">
+      <span id="count" style="font-size:13px;color:#666"></span>
+      <button class="btn-export" onclick="exportCSV()">⬇ Exportar CSV</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Nome</th><th>Endereço</th><th>Telefone</th><th>Site</th><th>Avaliação</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div id="status">Digite o nicho e a cidade para começar.</div>
+</div>
+
+<script>
+const KEY = 'AIzaSyDMPdnK9aMa5UsVWH81D1ylVvIxpQfYG10';
+let leads = [];
+
+async function buscar() {
+  const nicho = document.getElementById('nicho').value.trim();
+  const cidade = document.getElementById('cidade').value.trim();
+  if (!nicho || !cidade) { alert('Preencha nicho e cidade.'); return; }
+
+  leads = [];
+  document.getElementById('tbody').innerHTML = '';
+  document.getElementById('results-area').classList.add('hidden');
+  document.getElementById('status').textContent = 'Buscando...';
+  document.getElementById('btn-buscar').disabled = true;
+
+  try {
+    const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': KEY,
+        'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating',
+      },
+      body: JSON.stringify({ textQuery: `${nicho} em ${cidade}` }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      document.getElementById('status').textContent = 'Erro: ' + (data?.error?.message || res.status);
+      document.getElementById('btn-buscar').disabled = false;
+      return;
+    }
+
+    if (!data.places || data.places.length === 0) {
+      document.getElementById('status').textContent = 'Nenhum resultado encontrado.';
+      document.getElementById('btn-buscar').disabled = false;
+      return;
+    }
+
+    leads = data.places.map(p => ({
+      nome: p.displayName?.text || '',
+      endereco: p.formattedAddress || '',
+      telefone: p.nationalPhoneNumber || '',
+      site: p.websiteUri || '',
+      avaliacao: p.rating || '',
+    }));
+
+    const tbody = document.getElementById('tbody');
+    leads.forEach((l, i) => {
+      tbody.innerHTML += `<tr>
+        <td>${i+1}</td>
+        <td><strong>${l.nome}</strong></td>
+        <td>${l.endereco}</td>
+        <td>${l.telefone || '—'}</td>
+        <td>${l.site ? `<a href="${l.site}" target="_blank">Ver site</a>` : '—'}</td>
+        <td class="rating">${l.avaliacao ? '★ ' + l.avaliacao : '—'}</td>
+      </tr>`;
+    });
+
+    document.getElementById('count').textContent = `${leads.length} leads encontrados`;
+    document.getElementById('results-area').classList.remove('hidden');
+    document.getElementById('status').textContent = '';
+
+  } catch(err) {
+    document.getElementById('status').textContent = 'Erro de conexão: ' + err.message;
+  }
+
+  document.getElementById('btn-buscar').disabled = false;
+}
+
+function exportCSV() {
+  if (!leads.length) return;
+  const header = ['Nome','Endereço','Telefone','Site','Avaliação'];
+  const rows = leads.map(l => [l.nome,l.endereco,l.telefone,l.site,l.avaliacao].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+  const csv = [header.join(','),...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv'}));
+  a.download = 'leads.csv';
+  a.click();
+}
+</script>
+</body>
+</html>
