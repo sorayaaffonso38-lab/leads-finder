@@ -270,18 +270,39 @@ async function enriquecer() {
       }
     } catch(_) {}
 
-    // Social media via proxy
+    // Social media via proxy (try multiple)
     try {
-      const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(lead.site)}`;
-      const pRes = await fetch(proxy);
-      const pData = await pRes.json();
-      const html = pData.contents || '';
-      const ig = html.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
-      const fb = html.match(/facebook\.com\/([a-zA-Z0-9_./-]+)/);
-      const li = html.match(/linkedin\.com\/(?:in|company)\/([a-zA-Z0-9_-]+)/);
-      if (ig) lead.instagram = 'https://instagram.com/' + ig[1];
-      if (fb) lead.facebook = 'https://facebook.com/' + fb[1];
-      if (li) lead.linkedin = 'https://linkedin.com/company/' + li[1];
+      const proxies = [
+        `https://api.allorigins.win/get?url=${encodeURIComponent(lead.site)}`,
+        `https://corsproxy.io/?${encodeURIComponent(lead.site)}`,
+      ];
+      let html = '';
+      for (const proxyUrl of proxies) {
+        try {
+          const pRes = await fetch(proxyUrl, { signal: AbortSignal.timeout(6000) });
+          if (pRes.ok) {
+            const ct = pRes.headers.get('content-type') || '';
+            if (ct.includes('json')) {
+              const pData = await pRes.json();
+              html = pData.contents || '';
+            } else {
+              html = await pRes.text();
+            }
+            if (html.length > 500) break;
+          }
+        } catch(_) {}
+      }
+
+      const IGNORE_IG = /\/(sharer|share|p\/|reel\/|stories\/|explore\/)/;
+      const IGNORE_FB = /\/(sharer|share|plugins|dialog|login|v\d+)/;
+
+      const igM = html.match(/(?:href|src|content)=["'][^"']*instagram\.com\/([a-zA-Z0-9_.]{2,})\/?["']/);
+      const fbM = html.match(/(?:href|src|content)=["'][^"']*facebook\.com\/([a-zA-Z0-9_.]{2,}(?:\/[a-zA-Z0-9_.]+)?)\/?["']/);
+      const liM = html.match(/(?:href|src|content)=["'][^"']*linkedin\.com\/(?:in|company)\/([a-zA-Z0-9_-]{2,})\/?["']/);
+
+      if (igM && !IGNORE_IG.test(igM[1])) lead.instagram = 'https://instagram.com/' + igM[1];
+      if (fbM && !IGNORE_FB.test(fbM[1])) lead.facebook = 'https://facebook.com/' + fbM[1];
+      if (liM) lead.linkedin = 'https://linkedin.com/company/' + liM[1];
     } catch(_) {}
 
     renderTable();
