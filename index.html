@@ -70,11 +70,11 @@
     <h2>Configurações de API</h2>
     <div class="modal-field">
       <label>Google Maps API Key</label>
-      <input type="password" id="cfg-google" placeholder="AIza..."/>
+      <input type="text" id="cfg-google" placeholder="AIza..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
     </div>
     <div class="modal-field">
       <label>Hunter.io API Key <small style="color:#999;text-transform:none;font-weight:400">(para buscar emails)</small></label>
-      <input type="password" id="cfg-hunter" placeholder="Sua chave do Hunter.io"/>
+      <input type="text" id="cfg-hunter" placeholder="Sua chave do Hunter.io" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeSettings()">Cancelar</button>
@@ -156,9 +156,12 @@ function closeSettings() {
   document.getElementById('settings-modal').classList.add('hidden');
 }
 function saveSettings() {
-  localStorage.setItem('lf-google', document.getElementById('cfg-google').value.trim());
-  localStorage.setItem('lf-hunter', document.getElementById('cfg-hunter').value.trim());
+  const g = document.getElementById('cfg-google').value.trim();
+  const h = document.getElementById('cfg-hunter').value.trim();
+  localStorage.setItem('lf-google', g);
+  localStorage.setItem('lf-hunter', h);
   closeSettings();
+  alert('✅ Configurações salvas!');
   document.getElementById('status').textContent = 'Configurações salvas. Pronto para buscar!';
 }
 function getGoogle() { return localStorage.getItem('lf-google') || ''; }
