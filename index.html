@@ -150,19 +150,24 @@ let activeFilter = 'all';
 function openSettings() {
   document.getElementById('cfg-google').value = localStorage.getItem('lf-google') || '';
   document.getElementById('cfg-hunter').value = localStorage.getItem('lf-hunter') || '';
-  document.getElementById('settings-modal').classList.remove('hidden');
+  const m = document.getElementById('settings-modal');
+  m.classList.remove('hidden');
+  m.style.display = '';
 }
 function closeSettings() {
-  document.getElementById('settings-modal').classList.add('hidden');
+  const m = document.getElementById('settings-modal');
+  m.classList.add('hidden');
+  m.style.display = 'none';
 }
 function saveSettings() {
   const g = document.getElementById('cfg-google').value.trim();
   const h = document.getElementById('cfg-hunter').value.trim();
   localStorage.setItem('lf-google', g);
   localStorage.setItem('lf-hunter', h);
-  closeSettings();
-  alert('✅ Configurações salvas!');
-  document.getElementById('status').textContent = 'Configurações salvas. Pronto para buscar!';
+  const m = document.getElementById('settings-modal');
+  m.classList.add('hidden');
+  m.style.display = 'none';
+  document.getElementById('status').innerHTML = '<strong style="color:#00c853">✅ Configurações salvas! Pronto para buscar.</strong>';
 }
 function getGoogle() { return localStorage.getItem('lf-google') || ''; }
 function getHunter() { return localStorage.getItem('lf-hunter') || ''; }
